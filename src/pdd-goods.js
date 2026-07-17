@@ -1,14 +1,13 @@
 // 拼多多商品采集业务逻辑
 //
-// 本文件由 Vite 构建为 dist/pdd-goods.js，并通过 jsDelivr CDN 提供给
-// loader/pdd-goods.user.js 在运行时用 GM_xmlhttpRequest 拉取执行。
-// 更新此文件后重新 build 并推送到仓库即可让已安装脚本的用户下次打开页面时生效，
-// 无需重新安装 Tampermonkey 脚本。
+// 本文件由 Vite 构建为 dist/pdd-goods.js，通过 jsDelivr CDN 以 @require 的方式
+// 提供给 loader/pdd-goods.user.js 加载执行。更新此文件后重新 build 并推送到仓库，
+// Tampermonkey 会按其更新检查周期自动拉取最新内容，无需重新安装脚本。
+
+import { Pane } from 'tweakpane';
 
 (function () {
   'use strict';
-
-  const BUTTON_ID = 'pdd-goods-download-button';
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -207,73 +206,103 @@
     await navigator.clipboard.writeText(text);
   }
 
-  async function handleDownload() {
-    const result = await collectGoods();
-    const dir = getGoodsDir(result);
-    const markdown = buildMarkdown(result);
+  let pane = null;
+  let downloadButton = null;
+  let lastResult = null;
 
-    console.log('[PDD 商品采集结果]', result);
-    await copyJson(result);
+  const state = {
+    status: '尚未识别',
+    title: '',
+    carouselCount: 0,
+    detailCount: 0,
+  };
 
-    // downloadTextFile(markdown, `${dir}/${safeFileName(result.title)}.md`);
+  async function handleRecognize() {
+    state.status = '识别中...';
+    if (downloadButton) downloadButton.disabled = true;
+    pane.refresh();
 
-    const total = result.carouselImages.length + result.detailImages.length;
+    try {
+      const result = await collectGoods();
+      lastResult = result;
 
-    const ok = confirm([
-      '标题.md 已下载到商品目录，采集结果已复制到剪贴板',
-      '',
-      `标题：${result.title}`,
-      `轮播主图：${result.carouselImages.length} 张`,
-      `详情页图片：${result.detailImages.length} 张`,
-      '',
-      `是否开始批量下载 ${total} 张图片？`,
-    ].join('\n'));
+      state.title = result.title;
+      state.carouselCount = result.carouselImages.length;
+      state.detailCount = result.detailImages.length;
+      state.status = '识别完成';
 
-    if (!ok) return;
+      console.log('[PDD 商品采集结果]', result);
+      await copyJson(result);
 
-    await downloadImages(result);
-
-    // alert('下载任务已提交，请查看浏览器下载目录。');
+      if (downloadButton) {
+        downloadButton.disabled = result.carouselImages.length + result.detailImages.length === 0;
+      }
+    } catch (err) {
+      state.status = '识别失败';
+      console.error('[PDD 识别失败]', err);
+    } finally {
+      pane.refresh();
+    }
   }
 
-  function removeButton() {
-    document.getElementById(BUTTON_ID)?.remove();
+  async function handleDownloadClick() {
+    if (!lastResult) return;
+
+    state.status = '下载中...';
+    downloadButton.disabled = true;
+    pane.refresh();
+
+    try {
+      await downloadImages(lastResult);
+      state.status = '下载完成';
+    } catch (err) {
+      state.status = '下载失败';
+      console.error('[PDD 下载失败]', err);
+    } finally {
+      downloadButton.disabled = false;
+      pane.refresh();
+    }
   }
 
-  function createButton() {
+  function destroyPane() {
+    if (!pane) return;
+
+    pane.dispose();
+    pane = null;
+    downloadButton = null;
+  }
+
+  function createPane() {
     if (!isGoodsPage()) {
-      removeButton();
+      destroyPane();
       return;
     }
 
-    if (document.getElementById(BUTTON_ID)) return;
+    if (pane) return;
 
-    const button = document.createElement('button');
-
-    button.id = BUTTON_ID;
-    button.textContent = '下载商品';
-    button.style.cssText = `
+    pane = new Pane({ title: 'PDD 采集工具' });
+    pane.element.style.cssText = `
       position: fixed;
-      right: 12px;
       top: 80px;
+      right: 12px;
       z-index: 999999;
-      padding: 8px 12px;
-      border: none;
-      border-radius: 6px;
-      background: #e02e24;
-      color: #fff;
-      font-size: 14px;
-      line-height: 1;
-      cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, .16);
+      width: 260px;
     `;
 
-    button.addEventListener('click', handleDownload);
-    document.body.appendChild(button);
+    pane.addBinding(state, 'status', { label: '状态', readonly: true });
+    pane.addBinding(state, 'title', { label: '标题', readonly: true });
+    pane.addBinding(state, 'carouselCount', { label: '轮播主图', readonly: true });
+    pane.addBinding(state, 'detailCount', { label: '详情页图片', readonly: true });
+
+    pane.addButton({ title: '识别' }).on('click', handleRecognize);
+
+    downloadButton = pane.addButton({ title: '下载' });
+    downloadButton.disabled = true;
+    downloadButton.on('click', handleDownloadClick);
   }
 
   function init() {
-    createButton();
+    createPane();
   }
 
   init();

@@ -1,13 +1,16 @@
 {
   "name": "pdd-collector",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "type": "module",
   "packageManager": "pnpm@11.9.0",
   "scripts": {
     "clean": "rm -rf dist",
     "build": "pnpm run clean && vite build",
     "watch": "vite build --watch"
+  },
+  "dependencies": {
+    "tweakpane": "^4.0.5"
   },
   "devDependencies": {
     "vite": "^8.1.5"
