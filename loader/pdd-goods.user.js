@@ -1,45 +1,23 @@
 // ==UserScript==
 // @name         PDD 商品标题图片下载
 // @namespace    https://taodev.local/
-// @version      0.6.0
-// @description  远程加载拼多多商品采集业务脚本（标题、轮播主图、详情页图片），业务逻辑通过 HTTP 拉取，方便热更新
+// @version      0.7.0
+// @description  拼多多商品标题、轮播主图、详情页图片采集下载，业务逻辑通过 @require 从远程加载，方便更新
 // @match        https://mobile.yangkeduo.com/*
 // @match        https://mobile.pinduoduo.com/*
 // @grant        GM_download
 // @grant        GM_setClipboard
-// @grant        GM_xmlhttpRequest
 // @grant        window.onurlchange
-// @connect      cdn.jsdelivr.net
+// @require      https://cdn.jsdelivr.net/gh/myskux-labs/pdd-collector@main/dist/pdd-goods.js
 // @run-at       document-idle
 // @updateURL    https://cdn.jsdelivr.net/gh/myskux-labs/pdd-collector@main/loader/pdd-goods.user.js
 // @downloadURL  https://cdn.jsdelivr.net/gh/myskux-labs/pdd-collector@main/loader/pdd-goods.user.js
 // ==/UserScript==
 
-(function () {
-  'use strict';
-
-  // 业务脚本地址：Vite 构建产物，托管在本仓库 dist/ 目录，经 jsDelivr CDN 分发。
-  // 如需锁定到具体版本，可将 @main 替换为具体 tag，例如 @v0.6.0。
-  var SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/myskux-labs/pdd-collector@main/dist/pdd-goods.js';
-
-  GM_xmlhttpRequest({
-    method: 'GET',
-    url: SCRIPT_URL + '?_=' + Date.now(),
-    onload: function (res) {
-      if (res.status < 200 || res.status >= 300) {
-        console.error('[PDD Loader] 拉取业务脚本失败', res.status);
-        return;
-      }
-
-      try {
-        // eslint-disable-next-line no-new-func
-        new Function(res.responseText)();
-      } catch (err) {
-        console.error('[PDD Loader] 执行业务脚本出错', err);
-      }
-    },
-    onerror: function (err) {
-      console.error('[PDD Loader] 请求业务脚本出错', err);
-    },
-  });
-})();
+// 业务逻辑通过上面的 @require 从远程加载并执行，源码见 src/pdd-goods.js（构建产物 dist/pdd-goods.js）。
+// @require 让业务代码运行在与本脚本相同的沙箱作用域中，GM_download / GM_setClipboard 等 API 才能正常工作
+// ——不要改回用 GM_xmlhttpRequest 拉取后 new Function()/eval 执行，那样业务代码拿不到 GM API
+// 所在的闭包，会导致 GM_download 看起来调用成功但实际不会真正触发下载。
+//
+// Tampermonkey 会按其自身的"检查更新"周期自动重新拉取 @require 的内容，
+// 已安装本脚本的用户无需手动更新即可用到 dist/pdd-goods.js 的最新版本。
