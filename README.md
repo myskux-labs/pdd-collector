@@ -7,11 +7,12 @@
 业务逻辑与 Tampermonkey 入口脚本是分离的，方便在不要求用户重新安装脚本的情况下更新功能：
 
 ```
-src/pdd-goods.js          # 业务逻辑源码（采集、下载等具体实现）
-vite.config.js            # 构建配置，将 src/pdd-goods.js 打包为 dist/pdd-goods.js（IIFE）
-dist/pdd-goods.js         # 构建产物，提交到仓库，经 jsDelivr CDN 对外提供
-loader/pdd-goods.user.js  # 真正安装到 Tampermonkey 里的脚本，只做一件事：
-                           # 用 @require 声明加载 dist/pdd-goods.js
+src/pdd-goods.js              # 业务逻辑源码（采集、下载等具体实现）
+vite.config.js                # 构建配置，将 src/pdd-goods.js 打包为 dist/pdd-goods.js（IIFE）
+dist/pdd-goods.js             # 构建产物，提交到仓库，经 jsDelivr CDN 对外提供
+loader/pdd-goods.user.js      # 真正安装到 Tampermonkey 里的脚本，只做一件事：
+                               # 用 @require 声明加载 dist/pdd-goods.js（生产环境，指向 jsDelivr）
+loader/pdd-goods.dev.user.js  # 本地调试专用 loader，@require 指向本地 vite preview 服务器
 ```
 
 即：Tampermonkey 里安装的是一个「加载器」，元数据块里用 `@require` 指向 jsDelivr 上的业务脚本地址，由 Tampermonkey 自己负责拉取执行。更新功能只需要修改 `src/`、构建、推送到仓库，Tampermonkey 会按其更新检查周期自动拉取最新内容，已安装脚本的用户无需手动更新。
@@ -73,21 +74,37 @@ downloads/
 ## 开发与发布
 
 ```bash
-pnpm install      # 安装依赖（vite、tweakpane）
+pnpm install      # 安装依赖（vite、tweakpane、concurrently）
 pnpm run clean    # 清除 dist/ 构建产物
 pnpm run build    # 清除后重新构建 src/pdd-goods.js -> dist/pdd-goods.js（tweakpane 一并打包进单文件）
-pnpm run watch    # 监听文件变化自动重新构建，本地调试用
+pnpm run watch    # 监听文件变化自动重新构建 dist/pdd-goods.js
+pnpm run serve    # 用 vite preview 把 dist/ 用 HTTP 暴露出来（默认 http://localhost:4173/pdd-goods.js）
+pnpm run dev      # build 一次，然后并行跑 watch + serve，本地调试入口，见下方「本地调试」
+pnpm run purge    # 主动刷新 jsDelivr 对 dist/pdd-goods.js 和 loader/pdd-goods.user.js 的边缘缓存
 ```
+
+## 本地调试
+
+生产环境的 `loader/pdd-goods.user.js` 通过 `@require` 指向 jsDelivr，改一次代码要走 build → 推送 → purge 一整套流程，不适合开发时高频迭代。本地调试改用单独的 [loader/pdd-goods.dev.user.js](loader/pdd-goods.dev.user.js)，`@require` 指向本地的 `vite preview` 服务器：
+
+1. `pnpm run dev`：先构建一次，再并行启动 `vite build --watch`（保存 `src/pdd-goods.js` 自动重新打包）和 `vite preview --host --port 4173`（把 `dist/` 用 HTTP 暴露出来）
+2. 把 [loader/pdd-goods.dev.user.js](loader/pdd-goods.dev.user.js) 安装到 Tampermonkey（和正式 loader 是两个独立脚本，建议同一时间只启用一个，避免面板重复出现两份）
+3. 打开拼多多商品详情页调试，改 `src/pdd-goods.js` 保存后直接刷新页面即可看到效果，不需要手动点「检查更新」
+
+能做到"改完刷新就生效"，是因为 Tampermonkey 对 `@require http://localhost:...` **不会缓存**，每次页面加载都会重新拉取——这一点和 jsDelivr（`@main` 分支缓存最长 12 小时）以及普通 `https://` 的 `@require`（缓存到 Tampermonkey 下次检查更新）都不同，是社区里公认的本地调试写法。
+
+如果要用手机等其他设备测试（不是运行 `pnpm run dev` 的电脑），把 dev loader 里的 `localhost` 换成这台电脑的局域网 IP（`vite preview --host` 启动时会打印 `Network: http://<局域网IP>:4173/`），确保两台设备在同一局域网。这种情况下 Tampermonkey 是否仍然免缓存未经验证，如果改完刷新页面没反应，去 Tampermonkey 管理面板对 dev 脚本手动点一次「检查更新」。
 
 发布新版本业务逻辑的流程：
 
 1. 修改 `src/pdd-goods.js`
 2. `pnpm run build` 生成新的 `dist/pdd-goods.js`
 3. 提交并推送到 `main` 分支（`dist/` 已从 `.gitignore` 中排除，需要随源码一起提交）
-4. jsDelivr 会在数分钟内刷新缓存；如需立即生效，可访问 purge 接口手动清缓存：
-   `https://purge.jsdelivr.net/gh/myskux-labs/pdd-collector@main/dist/pdd-goods.js`
+4. `pnpm run purge` 主动清除 jsDelivr 边缘缓存，让新内容立即生效
 
-Tampermonkey 会按其自身「检查用户脚本更新」的周期（默认每天，也可在 Tampermonkey 设置里调整）重新拉取 `@require` 指向的内容，已安装 loader 脚本的用户无需重新安装或手动更新即可用上最新的 `dist/pdd-goods.js`；也可以在 Tampermonkey 管理面板里手动点「检查更新」立即刷新。
+> jsDelivr 对 `@main` 这类分支引用的 CDN 缓存最长可达 12 小时（tag/commit 引用则接近永久缓存，因为被当作不可变内容）。**给 URL 加时间戳/随机 query string 之类的"缓存穿透"技巧对 jsDelivr 无效**——它的缓存 key 只按仓库+ref+文件路径计算，会直接忽略 query string。真正有效的是官方的 [purge 接口](https://www.jsdelivr.com/tools/purge)，即上面的 `pnpm run purge`。
+
+Tampermonkey 自身也有「检查用户脚本更新」的周期（默认每天，可在 Tampermonkey 设置里调整），会重新拉取 `@require` 指向的内容；结合 `pnpm run purge` 主动清缓存，已安装 loader 脚本的用户基本可以在当天甚至几分钟内用上最新的 `dist/pdd-goods.js`，无需重新安装。也可以在 Tampermonkey 管理面板里手动点「检查更新」立即刷新。
 
 ## 技术说明
 

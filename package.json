@@ -7,12 +7,16 @@
   "scripts": {
     "clean": "rm -rf dist",
     "build": "pnpm run clean && vite build",
-    "watch": "vite build --watch"
+    "watch": "vite build --watch",
+    "serve": "vite preview --host --port 4173",
+    "dev": "pnpm run build && concurrently -n watch,serve -c blue,green \"pnpm run watch\" \"pnpm run serve\"",
+    "purge": "curl -sf https://purge.jsdelivr.net/gh/myskux-labs/pdd-collector@main/dist/pdd-goods.js && echo && curl -sf https://purge.jsdelivr.net/gh/myskux-labs/pdd-collector@main/loader/pdd-goods.user.js && echo"
   },
   "dependencies": {
     "tweakpane": "^4.0.5"
   },
   "devDependencies": {
+    "concurrently": "^10.0.3",
     "vite": "^8.1.5"
   }
 }
