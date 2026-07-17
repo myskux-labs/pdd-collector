@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         PDD 商品标题图片下载
 // @namespace    https://taodev.local/
-// @version      0.9.0
-// @description  拼多多商品标题、轮播主图、详情页图片采集打包下载（Tweakpane 面板 UI），业务逻辑通过 @require 从远程加载，方便更新
+// @version      0.10.0
+// @description  拼多多商品标题、轮播主图、详情页图片采集打包下载（含商品信息.md，Tweakpane 面板 UI），业务逻辑通过 @require 从远程加载，方便更新
 // @match        https://mobile.yangkeduo.com/*
 // @match        https://mobile.pinduoduo.com/*
 // @grant        GM_download

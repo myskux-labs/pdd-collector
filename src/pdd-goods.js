@@ -5,7 +5,7 @@
 // Tampermonkey 会按其更新检查周期自动拉取最新内容，无需重新安装脚本。
 
 import { Pane } from 'tweakpane';
-import { zipSync } from 'fflate';
+import { strToU8, zipSync } from 'fflate';
 
 (function () {
   'use strict';
@@ -135,21 +135,6 @@ import { zipSync } from 'fflate';
     return lines.join('\n');
   }
 
-  function downloadTextFile(content, filename) {
-    const blob = new Blob([content], {
-      type: 'text/markdown;charset=utf-8',
-    });
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-
-    a.href = url;
-    a.download = filename;
-    a.click();
-
-    URL.revokeObjectURL(url);
-  }
-
   function fetchImageBuffer(url) {
     return new Promise((resolve, reject) => {
       GM_xmlhttpRequest({
@@ -190,7 +175,9 @@ import { zipSync } from 'fflate';
       });
     });
 
-    const files = {};
+    const files = {
+      '商品信息.md': strToU8(buildMarkdown(result)),
+    };
 
     for (const task of tasks) {
       console.log('[PDD 打包图片]', task.filename, task.url);
@@ -202,10 +189,6 @@ import { zipSync } from 'fflate';
       }
 
       await sleep(300);
-    }
-
-    if (Object.keys(files).length === 0) {
-      throw new Error('没有可打包的图片');
     }
 
     const zipped = zipSync(files);

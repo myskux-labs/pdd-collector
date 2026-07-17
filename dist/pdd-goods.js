@@ -7624,6 +7624,31 @@
 			const title = safeFileName(result.title);
 			return result.goodsId ? `${result.goodsId}_${title}` : title;
 		}
+		function buildMarkdown(result) {
+			const lines = [];
+			lines.push(`# ${result.title}`);
+			lines.push("");
+			lines.push(`商品链接：${result.url}`);
+			lines.push(`商品 ID：${result.goodsId}`);
+			lines.push("");
+			lines.push(`## 轮播主图`);
+			lines.push("");
+			result.carouselImages.forEach((url, index) => {
+				const filename = `轮播主图-${String(index + 1).padStart(2, "0")}.${getImageExt(url)}`;
+				lines.push(`${index + 1}. ${filename}`);
+				lines.push(`   ${url}`);
+			});
+			lines.push("");
+			lines.push(`## 详情页图片`);
+			lines.push("");
+			result.detailImages.forEach((url, index) => {
+				const filename = `详情页-${String(index + 1).padStart(2, "0")}.${getImageExt(url)}`;
+				lines.push(`${index + 1}. ${filename}`);
+				lines.push(`   ${url}`);
+			});
+			lines.push("");
+			return lines.join("\n");
+		}
 		function fetchImageBuffer(url) {
 			return new Promise((resolve, reject) => {
 				GM_xmlhttpRequest({
@@ -7659,7 +7684,7 @@
 					filename: `详情页-${String(index + 1).padStart(2, "0")}.${ext}`
 				});
 			});
-			const files = {};
+			const files = { "商品信息.md": strToU8(buildMarkdown(result)) };
 			for (const task of tasks) {
 				console.log("[PDD 打包图片]", task.filename, task.url);
 				try {
@@ -7669,7 +7694,6 @@
 				}
 				await sleep(300);
 			}
-			if (Object.keys(files).length === 0) throw new Error("没有可打包的图片");
 			const zipped = zipSync(files);
 			const blob = new Blob([zipped], { type: "application/zip" });
 			const blobUrl = URL.createObjectURL(blob);
