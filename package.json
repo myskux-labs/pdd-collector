@@ -1,7 +1,7 @@
 {
   "name": "pdd-collector",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.9.0",
   "type": "module",
   "packageManager": "pnpm@11.9.0",
   "scripts": {
@@ -13,6 +13,7 @@
     "purge": "curl -sf https://purge.jsdelivr.net/gh/myskux-labs/pdd-collector@main/dist/pdd-goods.js && echo && curl -sf https://purge.jsdelivr.net/gh/myskux-labs/pdd-collector@main/loader/pdd-goods.user.js && echo"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
     "tweakpane": "^4.0.5"
   },
   "devDependencies": {

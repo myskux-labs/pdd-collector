@@ -7,7 +7,9 @@
 // @match        https://mobile.pinduoduo.com/*
 // @grant        GM_download
 // @grant        GM_setClipboard
+// @grant        GM_xmlhttpRequest
 // @grant        window.onurlchange
+// @connect      *
 // @require      http://localhost:4173/pdd-goods.js
 // @run-at       document-idle
 // ==/UserScript==

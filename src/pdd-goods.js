@@ -5,6 +5,7 @@
 // Tampermonkey 会按其更新检查周期自动拉取最新内容，无需重新安装脚本。
 
 import { Pane } from 'tweakpane';
+import { zipSync } from 'fflate';
 
 (function () {
   'use strict';
@@ -149,13 +150,20 @@ import { Pane } from 'tweakpane';
     URL.revokeObjectURL(url);
   }
 
-  function downloadImage(url, filename) {
+  function fetchImageBuffer(url) {
     return new Promise((resolve, reject) => {
-      GM_download({
+      GM_xmlhttpRequest({
+        method: 'GET',
         url,
-        name: filename,
-        saveAs: false,
-        onload: resolve,
+        responseType: 'arraybuffer',
+        onload: (res) => {
+          if (res.status < 200 || res.status >= 300) {
+            reject(new Error(`HTTP ${res.status}`));
+            return;
+          }
+
+          resolve(new Uint8Array(res.response));
+        },
         onerror: reject,
         ontimeout: reject,
       });
@@ -170,7 +178,7 @@ import { Pane } from 'tweakpane';
       const ext = getImageExt(url);
       tasks.push({
         url,
-        filename: `${dir}/轮播主图-${String(index + 1).padStart(2, '0')}.${ext}`,
+        filename: `轮播主图-${String(index + 1).padStart(2, '0')}.${ext}`,
       });
     });
 
@@ -178,20 +186,45 @@ import { Pane } from 'tweakpane';
       const ext = getImageExt(url);
       tasks.push({
         url,
-        filename: `${dir}/详情页-${String(index + 1).padStart(2, '0')}.${ext}`,
+        filename: `详情页-${String(index + 1).padStart(2, '0')}.${ext}`,
       });
     });
 
+    const files = {};
+
     for (const task of tasks) {
-      console.log('[PDD 下载图片]', task.filename, task.url);
+      console.log('[PDD 打包图片]', task.filename, task.url);
 
       try {
-        await downloadImage(task.url, task.filename);
+        files[task.filename] = await fetchImageBuffer(task.url);
       } catch (err) {
-        console.error('[PDD 下载失败]', task.filename, err);
+        console.error('[PDD 图片获取失败]', task.filename, err);
       }
 
       await sleep(300);
+    }
+
+    if (Object.keys(files).length === 0) {
+      throw new Error('没有可打包的图片');
+    }
+
+    const zipped = zipSync(files);
+    const blob = new Blob([zipped], { type: 'application/zip' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    try {
+      await new Promise((resolve, reject) => {
+        GM_download({
+          url: blobUrl,
+          name: `${dir}.zip`,
+          saveAs: false,
+          onload: resolve,
+          onerror: reject,
+          ontimeout: reject,
+        });
+      });
+    } finally {
+      URL.revokeObjectURL(blobUrl);
     }
   }
 
@@ -248,7 +281,7 @@ import { Pane } from 'tweakpane';
   async function handleDownloadClick() {
     if (!lastResult) return;
 
-    state.status = '下载中...';
+    state.status = '打包下载中...';
     downloadButton.disabled = true;
     pane.refresh();
 
