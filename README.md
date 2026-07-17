@@ -72,15 +72,16 @@ downloads/
 ## 开发与发布
 
 ```bash
-npm install       # 安装依赖（vite）
-npm run build      # 构建 src/pdd-goods.js -> dist/pdd-goods.js
-npm run watch       # 监听文件变化自动重新构建，本地调试用
+pnpm install      # 安装依赖（vite）
+pnpm run clean    # 清除 dist/ 构建产物
+pnpm run build    # 清除后重新构建 src/pdd-goods.js -> dist/pdd-goods.js
+pnpm run watch    # 监听文件变化自动重新构建，本地调试用
 ```
 
 发布新版本业务逻辑的流程：
 
 1. 修改 `src/pdd-goods.js`
-2. `npm run build` 生成新的 `dist/pdd-goods.js`
+2. `pnpm run build` 生成新的 `dist/pdd-goods.js`
 3. 提交并推送到 `main` 分支（`dist/` 已从 `.gitignore` 中排除，需要随源码一起提交）
 4. jsDelivr 会在数分钟内刷新缓存；如需立即生效，可访问 purge 接口手动清缓存：
    `https://purge.jsdelivr.net/gh/myskux-labs/pdd-collector@main/dist/pdd-goods.js`
