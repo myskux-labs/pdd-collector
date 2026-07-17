@@ -141,3 +141,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# dist/ 需要提交到仓库，通过 jsDelivr CDN 对外提供构建产物，不忽略
+!dist
+!dist/**

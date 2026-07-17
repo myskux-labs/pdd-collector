@@ -1,0 +1,13 @@
+{
+  "name": "pdd-collector",
+  "private": true,
+  "version": "0.6.0",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "watch": "vite build --watch"
+  },
+  "devDependencies": {
+    "vite": "^5.4.10"
+  }
+}

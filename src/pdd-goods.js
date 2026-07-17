@@ -1,15 +1,9 @@
-// ==UserScript==
-// @name         PDD 商品标题图片下载
-// @namespace    https://taodev.local/
-// @version      0.5.0
-// @description  下载拼多多商品标题.md、轮播主图、详情页图片
-// @match        https://mobile.yangkeduo.com/*
-// @match        https://mobile.pinduoduo.com/*
-// @grant        GM_download
-// @grant        GM_setClipboard
-// @grant        window.onurlchange
-// @run-at       document-idle
-// ==/UserScript==
+// 拼多多商品采集业务逻辑
+//
+// 本文件由 Vite 构建为 dist/pdd-goods.js，并通过 jsDelivr CDN 提供给
+// loader/pdd-goods.user.js 在运行时用 GM_xmlhttpRequest 拉取执行。
+// 更新此文件后重新 build 并推送到仓库即可让已安装脚本的用户下次打开页面时生效，
+// 无需重新安装 Tampermonkey 脚本。
 
 (function () {
   'use strict';
